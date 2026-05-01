@@ -1,0 +1,76 @@
+real E = 21e10;
+real nu = 0.3;
+
+real lambda = E*nu/((1+nu)*(1-2*nu));
+real mu = E / (2 * (1 + nu));
+
+real lx = 5;
+real ly = 2;
+
+int n = 20;
+mesh Th = square(n, n, [x * lx, y * ly]);
+
+fespace Vh(Th, P1);
+Vh ux, uy;
+Vh vx, vy;
+
+real f1 = 3.;
+real f2 = -4.;
+
+// ux(x,y) = a1*x^2+a2*x*y+a3*y^2
+// uy(x,y) = b1*x^2+b2*x*y+b3*y^2
+// a1, a3, b1, b3 - свободные
+
+real a1 = 1.2;
+real a3 = 0;
+real b1 = -95.68;
+real b3 = 0;
+real a2 = -(2*mu*b1+(2*lambda+4*mu)*b3+f2)/(lambda+mu);
+real b2 = -(2*mu*a3+(2*lambda+4*mu)*a1+f1)/(lambda+mu);
+
+real sqrt2=sqrt(2.);
+macro epsilon(u1,u2) [dx(u1),dy(u2),(dy(u1)+dx(u2))/sqrt2] //
+macro div(u,v) ( dx(u)+dy(v) ) //
+
+
+solve Elasticity([ux, uy], [vx, vy])
+    = int2d(Th)(
+        lambda*div(ux, uy)*div(vx, vy)
+        + 2.*mu*(epsilon(ux, uy)' * epsilon(vx, vy))
+    )
+    - int2d(Th)(
+        f1*vx+f2*vy
+    )
+    +on(1, ux=a1*x^2, uy=b1*x^2)
+    +on(2, ux=a1*lx^2+a2*lx*y+a3*y^2, uy=b1*lx^2+b2*lx*y+b3*y^2)
+    +on(3, ux=a1*x^2+a2*x*ly+a3*ly^2, uy=b1*x^2+b2*x*ly+b3*ly^2)
+    +on(4, ux=a3*y^2, uy=b3*y^2)
+    ;
+
+//plot([ux, uy], wait=1);
+
+// real k = 0.5;
+// mesh th1 = movemesh(Th, [x + ux * k, y + uy * k]);
+// plot(th1, wait = 1);
+
+Vh uxEx, uyEx, ex, ey;
+uxEx = a1 * x^2 + a2 * x * y + a3 * y^2;
+uyEx = b1 * x^2 + b2 * x * y + b3 * y^2;
+
+ex = ux - uxEx;
+ey = uy - uyEx;
+
+real exNorm = 0.;
+real deltaNorm = 0.;
+
+for(int i = 0; i < ex[].n; ++i)
+{
+    real t = sqrt(uxEx[][i]^2+uyEx[][i]^2);
+    if(t > exNorm) exNorm = t;
+
+    real r = sqrt(ex[][i]^2+ey[][i]^2);
+    if(r > deltaNorm) deltaNorm = r;
+}
+
+real delta = deltaNorm / exNorm;
+cout << delta << endl;

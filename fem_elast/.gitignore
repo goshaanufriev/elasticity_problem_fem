@@ -431,6 +431,7 @@ FodyWeavers.xsd
 # Visual Studio служебные файлы
 .vs/
 *.vcxproj.user
+*.vcxproj.filters
 *.suo
 
 !*.vcxproj

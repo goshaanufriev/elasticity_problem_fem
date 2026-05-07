@@ -196,38 +196,79 @@ std::vector<double> kVec(std::vector<double>& v, double& k)
 	return u;
 }
 
-std::vector<double> conjGrad(std::vector<std::vector<double>>& A, std::vector<double>& b, std::vector<double>& x0)
+//std::vector<double> conjGrad(std::vector<std::vector<double>>& A, std::vector<double>& b, std::vector<double>& x0)
+//{
+//	int n = b.size();
+//	double alpha = 0;
+//	std::vector<double> ax = multMat(A, x0);
+//	std::vector<double> r = subVec(ax, b);
+//	std::vector<double> ar = multMat(A, r);
+//	double beta = -dot(r, r) / dot(ar, r);
+//	std::vector<double> delta = kVec(r, beta);
+//	std::vector<double> x = addVec(x0, delta);
+//	std::vector<double> adx, dalpha, rbeta;
+//	for (int i = 1; i < n; ++i)
+//	{
+//		ax = multMat(A, x);
+//		r = subVec(ax, b);
+//		ar = multMat(A, r);
+//		adx = multMat(A, delta);
+//		// dots
+//		double rr = dot(r, r);
+//		double ardx = dot(ar, delta);
+//		double rdx = dot(r, delta);
+//		double arr = dot(ar, r);
+//		double adxdx = dot(adx, delta);
+//
+//		double denom = adxdx * arr - ardx * ardx;
+//		double alpha = (rr * ardx - rdx * arr) / denom;
+//		double beta = (rdx * ardx - rr * adxdx) / denom;
+//		dalpha = kVec(delta, alpha);
+//		rbeta = kVec(r, beta);
+//		delta = addVec(dalpha, rbeta);
+//		x = addVec(x, delta);
+//	}
+//	return x;
+//}
+
+std::vector<double> conjGrad(
+	const std::vector<std::vector<double>>& A,
+	const std::vector<double>& b,
+	std::vector<double> x)
 {
 	int n = b.size();
-	double alpha = 0;
-	std::vector<double> ax = multMat(A, x0);
-	std::vector<double> r = subVec(ax, b);
-	std::vector<double> ar = multMat(A, r);
-	double beta = -dot(r, r) / dot(ar, r);
-	std::vector<double> delta = kVec(r, beta);
-	std::vector<double> x = addVec(x0, delta);
-	std::vector<double> adx, dalpha, rbeta;
-	for (int i = 1; i < n; ++i)
-	{
-		ax = multMat(A, x);
-		r = subVec(ax, b);
-		ar = multMat(A, r);
-		adx = multMat(A, delta);
-		// dots
-		double rr = dot(r, r);
-		double ardx = dot(ar, delta);
-		double rdx = dot(r, delta);
-		double arr = dot(ar, r);
-		double adxdx = dot(adx, delta);
 
-		double denom = adxdx * arr - ardx * ardx;
-		double alpha = (rr * ardx - rdx * arr) / denom;
-		double beta = (rdx * ardx - rr * adxdx) / denom;
-		dalpha = kVec(delta, alpha);
-		rbeta = kVec(r, beta);
-		delta = addVec(dalpha, rbeta);
-		x = addVec(x, delta);
+	std::vector<double> r = subVec(b, multMat(A, x));
+	std::vector<double> p = r;
+
+	double rr = dot(r, r);
+	double eps = 1e-14;
+
+	for (int k = 0; k < n; ++k)
+	{
+		std::vector<double> Ap = multMat(A, p);
+
+		double alpha = rr / dot(p, Ap);
+
+		for (int i = 0; i < n; ++i)
+			x[i] += alpha * p[i];
+
+		for (int i = 0; i < n; ++i)
+			r[i] -= alpha * Ap[i];
+
+		double rr_new = dot(r, r);
+
+		if (sqrt(rr_new) < eps)
+			break;
+
+		double beta = rr_new / rr;
+
+		for (int i = 0; i < n; ++i)
+			p[i] = r[i] + beta * p[i];
+
+		rr = rr_new;
 	}
+
 	return x;
 }
 
@@ -254,9 +295,9 @@ int main()
 {
 	// Генерация сетки
 	Segment xSeg{ 0, 10 };
-	int nx = 30;
+	int nx = 10;
 	Segment ySeg{ 0, 5 };
-	int ny = 20;
+	int ny = 10;
 	std::vector<Node> grid = Grid(xSeg, ySeg, nx, ny);
 
 	// Константы
@@ -445,6 +486,15 @@ int main()
 			F[J] = uy;
 		}
 	}
+
+	/*for (int i = 0; i < 2 * gSize; ++i)
+	{
+		for (int j = 0; j < 2 * gSize; ++j)
+		{
+			std::cout << K[i][j] << "\t";
+		}
+		std::cout << "\n";
+	}*/
 
 	int sysSize = 2 * gSize;
 	std::vector<double> u0(sysSize);
